@@ -1,0 +1,54 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { CartItem } from '../../entities/cartItem.entity';
+import { plainToInstance } from 'class-transformer';
+import { CartItemCreatePublicDto } from '../../dtos/cartItems/public/cartItem.create.public.dto';
+import { CartItemUpdatePublicDto } from '../../dtos/cartItems/public/cartItem.update.public.dto';
+import { CartItemListPublicDto } from '../../dtos/cartItems/public/cartItem.list.public.dto';
+import { CartItemRepository } from '../../repository/cart-item.repository';
+
+@Injectable()
+export class CartItemPublicService {
+  constructor(private readonly repo: CartItemRepository) {
+  }
+
+  async addToCart(payload: CartItemCreatePublicDto, userId: number) {
+    const existing = await this.repo.getOneByAdd(userId,payload.target,payload.targetId)
+
+    if (existing) {
+      existing.quantity += payload.quantity ?? 1;
+      await this.repo.save(existing)
+      return existing;
+    }
+
+    const cartItem = CartItem.create({
+      ...payload,
+      userId,
+      quantity: payload.quantity ?? 1,
+    } as CartItem);
+    await this.repo.save(cartItem)
+    return cartItem;
+  }
+
+  async getCart(userId: number) {
+    const items = await this.repo.getAllByUserId(userId)
+    return plainToInstance(CartItemListPublicDto, items, { excludeExtraneousValues: true });
+  }
+
+  async updateQuantity(id: number, userId: number, payload: CartItemUpdatePublicDto) {
+    const item = await this.repo.getOneByUserId(id,userId)
+    if (!item) {
+      throw new NotFoundException('Cart item with given id not found');
+    }
+    item.quantity = payload.quantity;
+    await this.repo.save(item)
+    return item;
+  }
+
+  async removeFromCart(id: number, userId: number) {
+    const item = await this.repo.getOneByUserId(id,userId)
+    if (!item) {
+      throw new NotFoundException('Cart item with given id not found');
+    }
+    await this.repo.delete(item)
+  }
+}

@@ -1,0 +1,29 @@
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { Controller, Get, Param, ParseIntPipe, Post, Req, UseGuards } from '@nestjs/common';
+import { BookLikesPublicService } from '../../services/bookLikes/bookLikes.public.service';
+import type {Request} from 'express';
+import { Roles } from '../../../../core/decorators/roles.decorator';
+import { Role } from '../../../../core/enum/enum';
+import { AuthenticationGuard } from '../../../../core/guard/authentication.guard';
+
+@ApiTags('BookLike - Public')
+@ApiBearerAuth()
+@Controller('public/book-like')
+@UseGuards(AuthenticationGuard)
+@Roles(Role.USER, Role.ADMIN,Role.SUPER_ADMIN)
+export class BookLikesPublicController{
+
+  constructor(private readonly service : BookLikesPublicService) {}
+
+  @Get()
+  async getLiked(@Req() request : Request){
+    // @ts-ignore
+    return await this.service.getLikedBooks(request.user.id)
+  }
+
+  @Post(':bookId')
+  async toggleLike(@Req() request : Request, @Param('bookId',ParseIntPipe) id : number){
+    // @ts-ignore
+    return await this.service.toggleLike(id, request.user.id)
+  }
+}
